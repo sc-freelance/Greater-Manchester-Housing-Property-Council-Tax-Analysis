@@ -1,54 +1,51 @@
-# Greater Manchester Property & Housing Analytics Suite
+# Greater Manchester Housing, Property & Council Tax Analysis
 
-An end-to-end data engineering and visualization pipeline built to analyze multi-decade housing stock dynamics and market transactions across Greater Manchester, utilizing official UK government open datasets from the **Valuation Office Agency (VOA)** and **HM Land Registry**.
+An exploratory analysis of house prices and housing stock across Greater Manchester's 10 boroughs (Bolton, Bury, Manchester, Oldham, Rochdale, Salford, Stockport, Tameside, Trafford and Wigan), using official UK open data and Python (pandas, Matplotlib, scikit-learn).
 
----
+## Data sources
 
-## 📋 Project Overview
+| Dataset | What it contains | File in this repo |
+|---|---|---|
+| HM Land Registry, Price Paid Data (monthly update) | Individual property sales registered in the latest monthly release | `pp-monthly-update-new-version.csv` |
+| Valuation Office Agency, Council Tax: Stock of Properties (CTSOP 1.0), 1993–2024 | Number of homes in each council tax band, per local authority, at each annual snapshot | `CTSOP1-0-1993-2024.zip.zip` |
 
-This project processes historical multi-year records and cross-sectional snapshots, transforming complex government data into an insightful, publication-ready analytical suite across Greater Manchester’s 10 local authorities (Manchester, Bolton, Bury, Wigan, Tameside, Stockport, Trafford, Salford, Oldham, and Rochdale).
+## What the notebook does
 
----
+1. Filters both datasets to the 10 Greater Manchester boroughs.
+2. Cleans the price data: converts prices to numbers, keeps only standard sales (`ppd_category = A`), and removes changed or deleted records (`record_status = A` only).
+3. Uses medians rather than averages, so a few very expensive sales don't distort the results.
+4. Produces six charts, each followed by notes on **what it shows** and **what it doesn't show**.
 
-## 🗄️ Integrated Data Sources
+## Key findings
 
-* **1. GOV.UK VOA CTSOP 1.0 Dataset (`CTSOP1-0-1993-2024.zip`):** Multi-year historical housing stock snapshots (1993–2024) categorized by Council Tax valuation bands across local authority districts.
-* **2. HM Land Registry Datasets:** Property transaction records and house price index data providing deep insights into market liquidity, average transaction values, and price growth trajectories across the region.
+* **House prices (sample of recent sales):** Trafford (£370,000) and Stockport (£325,000) have the highest median sale prices. Wigan (£202,000) and Rochdale (£210,000) have the lowest.
+* **Property type:** detached homes have the highest median (about £392,500). Terraced homes and flats have the lowest (about £200,000 and £195,000).
+* **Housing stock:** Manchester has the most homes (about 249,000) and Bury the fewest (about 85,000). Greater Manchester grew from about 1.07 million homes in 1993 to 1.29 million in 2024, a rise of about 21%.
+* **Council tax bands:** 55% of Manchester's homes are in Band A, compared with 19% in Trafford and 24% in Stockport.
 
----
+## Limitations
 
-## 📊 Visualization Suite & Analytical Findings
+* The Price Paid file is a **monthly update**, not a full record of every sale, so borough medians are a snapshot rather than official statistics.
+* The two datasets are analysed side by side, not merged.
+* Council tax bands in England are based on 1991 valuations, so they show the relative mix of housing, not current values.
 
-### 1. Chart 1: Borough Housing Stock Hierarchy Snapshot
-* **Analytical Insight:** This cross-sectional horizontal bar chart establishes the baseline structural size disparity across Greater Manchester's 10 local authorities. **Manchester** commands the largest share of the regional housing inventory with approximately 249,300 residential properties, followed closely by Wigan (152,670) and Salford (134,060). Conversely, **Bury** sits at the lower end of the regional footprint with roughly 85,100 properties, underscoring distinct urban density concentrations.
-* **Technical Implementation:** Built using an object-oriented Matplotlib approach paired with pandas, utilizing `.set_index()` to map borough names directly as categorical row labels in a horizontal bar layout (`kind='barh'`) with explicit coordinate text annotations.
-* **Refinement & Challenges:** Initial raw data frames presented unformatted alphabetical lists, making rapid regional comparison difficult. This was successfully resolved by introducing `.sort_values('total_stock', ascending=True)` to transform the visualization into a structured descending hierarchy.
+## Problems I ran into (and fixed)
 
-### 2. Chart 2: Multi-Decade Time-Series Growth & Polynomial Regression
-* **Analytical Insight:** Captures the continuous, multi-decade expansion of Greater Manchester’s residential housing inventory over a 30-year horizon (1993–2024). The data reveals a steady upward climb from roughly 1.07 million homes in the early 1990s to over 1.28 million by 2024, highlighting non-linear construction acceleration patterns.
-* **Technical Implementation:** Automates multi-file ingestion via `glob` and dynamic year extraction via string splitting (`filename.split('_')`). Integrates `scikit-learn` (`PolynomialFeatures(degree=2)` and `LinearRegression`) with high-density linear space generation (`np.linspace`) to map a smooth predictive curve over scatter data points.
-* **Outlier Management & Error Resolution:** Early development runs encountered a severe historical anomaly: unmasked 1993 snapshots contained national/regional summary rows that bypassed filtering, producing a distorted U-shaped curve skewed by an erroneous 75-million-property outlier. This was systematically corrected by engineering a robust **defensive guardrail filter** (`yearly_growth['all_properties'] < 2500000`) and dynamic column-resolution logic.
+* **A 75-million-home outlier.** The VOA zip includes a combined all-years file that my file pattern also picked up. Filtering out large totals hid the problem but also deleted the real 1993 snapshot. The fix was to match only the single-year file names, so all 32 snapshots are now included.
+* **A misleading price trend.** A degree-10 polynomial fitted to monthly prices back to 1995 looked convincing, but most early months had only one or two sales in this file. The chart now only shows months with at least 30 sales, with the count next to each median.
+* **The first sale was read as the header.** The Price Paid CSV has no header row, so the column names are now supplied when loading.
 
-### 3. Chart 3: Council Tax Band Composition (Stacked Bar Chart)
-* **Analytical Insight:** Breaks down the latest 2024 baseline inventory across Greater Manchester by valuation tiers (Council Tax Bands A through I). It exposes socio-economic housing disparities, revealing dense concentrations of lower valuation bands (Bands A and B) in urban centers like Manchester and Wigan compared to suburban profiles.
-* **Technical Implementation:** Targets the most recent annual CSV file via dynamic pattern matching, extracts all valuation band attributes, and renders a professional stacked horizontal bar chart (`stacked=True`) utilizing a distinct categorical color map (`colormap='tab20_r'`) and an anchored external legend.
-* **Handling Data Schema Discrepancies:** Shifting government naming conventions across decades initially triggered `KeyError` exceptions. This was resolved using intelligent fallback generators (`next()` keyword lookups), data-type coercion (`pd.to_numeric`), and clean dataframe projection to eliminate pandas performance fragmentation warnings.
+## Next steps
 
----
+* Use a full year of Price Paid Data so borough medians cover all sales.
+* Combine the datasets, for example each borough's median price against its share of Band A homes.
+* Add ONS earnings data to calculate an affordability ratio (house price divided by earnings) for each borough.
 
-## 🛠️ Technical Architecture & Data Engineering
-
-* **Automated Multi-File Ingestion:** Leverages Python's `glob` module and `zipfile` extraction to parse dozens of annual CSV snapshots without manual intervention.
-* **Dynamic Schema Resolution:** Employs intelligent fallback generators to dynamically adapt to changing column names and header schemas across historical files.
-* **Defensive Outlier Guardrails:** Automatically detects and filters out erroneous national or regional aggregate summary rows to preserve true regional scaling.
-* **Machine Learning Integration:** Combines `scikit-learn` polynomial regression with `np.linspace` for smooth growth trend modeling.
-* **Object-Oriented Matplotlib:** Utilizes clean figure-axes instantiation (`plt.subplots()`, `ax`), explicit value annotations, custom color maps, and `tight_layout()` formatting.
-
----
-
-## ⚙️ Prerequisites & Installation
-
-Ensure you have Python 3.8+ installed along with the required data science libraries:
+## How to run
 
 ```bash
-pip install pandas numpy matplotlib scikit-learn
+pip install pandas numpy matplotlib scikit-learn jupyter
+jupyter notebook GM-Housing-Property-Council-Tax-Analysis.ipynb
+```
+
+Keep the data files in the same folder as the notebook. The notebook extracts the VOA zip into a `voa_data/` folder itself.
